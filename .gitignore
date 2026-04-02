@@ -247,3 +247,18 @@ terraform.rc
 
 # M365 Copilot
 appPackage/manifest.json
+# Dev/temp artifacts
+applogs/
+applogs.zip
+alfred-agent.zip
+appPackage/Alfred-DEV.zip
+appPackage/Alfred-SSO.zip
+appPackage/Alfred-live-test.zip
+appPackage/Alfred.zip
+og-ref-c#/
+og-repo/
+Agents-for-python/
+infra/main.json
+src/proxy_agent/appsettings.Development.json
+src/proxy_agent/bin/
+src/proxy_agent/obj/
