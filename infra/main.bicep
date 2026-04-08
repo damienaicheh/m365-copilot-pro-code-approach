@@ -88,7 +88,6 @@ var resourceSuffix = [
 ]
 var resourceSuffixKebabcase = join(resourceSuffix, '-')
 var apimServiceName = 'apim-${resourceSuffixKebabcase}'
-var apimApiPath = 'foundry'
 
 @description('The resource group.')
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -339,16 +338,6 @@ module appRegistration './modules/security/app-registration.bicep' = {
   }
 }
 
-// API App Registration — represents the API resource exposed via APIM
-// APIM validates JWT tokens against both bot and API audiences
-module apiAppRegistration './modules/security/api-app-registration.bicep' = {
-  name: 'deploy-api-app-registration'
-  scope: resourceGroup
-  params: {
-    apiAppName: 'api-${resourceSuffixKebabcase}'
-    botAppClientId: appRegistration.outputs.aadAppId
-  }
-}
 
 
 module apiManagement './modules/apim/apim.bicep' = {
@@ -361,18 +350,6 @@ module apiManagement './modules/apim/apim.bicep' = {
     publisherEmail: apimPublisherEmail
     publisherName: 'm365-copilot-pro-code-approach'
     sku: apimSku
-    tenantId: tenantId
-    backendBaseUrl: teamsAgentAppService.outputs.uri
-    foundryBackendUrl: msFoundryProject.outputs.endpoint
-    managedIdentityClientId: botUami.outputs.clientId
-    managedIdentityResourceId: botUami.outputs.id
-    apiPath: apimApiPath
-    allowedAudiences: [
-      appRegistration.outputs.aadAppId
-      appRegistration.outputs.aadAppIdUri
-      apiAppRegistration.outputs.apiAppId
-      apiAppRegistration.outputs.apiAppIdUri
-    ]
     botAppId: botUami.outputs.clientId
     botBackendUrl: teamsAgentAppService.outputs.uri
   }
@@ -448,12 +425,7 @@ output BOT_ID string = botUami.outputs.clientId
 output BOT_SERVICE_NAME string = botService.outputs.botName
 output BOT_ENDPOINT string = apiManagement.outputs.botMessagingEndpoint
 output BOT_DOMAIN string = replace(teamsAgentAppService.outputs.uri, 'https://', '')
-output APIM_NAME string = apiManagement.outputs.name
-output APIM_PROXY_URL string = apiManagement.outputs.proxyUrl
 
-// API App Registration outputs
-output API_APP_CLIENT_ID string = apiAppRegistration.outputs.apiAppId
-output API_APP_ID_URI string = apiAppRegistration.outputs.apiAppIdUri
 
 // App Registration outputs
 output AAD_APP_CLIENT_ID string = appRegistration.outputs.aadAppId
