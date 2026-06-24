@@ -16,8 +16,8 @@ param name string
 param location string
 
 @description('The environment deployed')
-@allowed(['sbx', 'dev', 'stg', 'prd'])
-param environment string = 'sbx'
+@allowed(['dev', 'stg', 'prd'])
+param environment string = 'dev'
 
 @description('Name of the application')
 param application string = 'cpl'
@@ -39,27 +39,13 @@ param tags object = {
   'eastus2'
   'swedencentral'
 ])
-param msFoundryLocation string = 'eastus2'
-
-@description('The small model to be used for chat completions')
-param chatSmallModel object = {
-  name: 'gpt-4.1-mini'
-  capacity: 2000
-  version: '2025-04-14'
-}
+param msFoundryLocation string = 'swedencentral'
 
 @description('The orchestrator model to be used for chat completions')
 param chatOrchestratorModel object = {
-  name: 'gpt-5-chat'
+  name: 'gpt-5.4'
   capacity: 500
-  version: '2025-10-03'
-}
-
-@description('The embedding model for vector search')
-param embeddingModel object = {
-  name: 'text-embedding-3-small'
-  capacity: 350
-  version: '1'
+  version: '2026-03-05'
 }
 
 @description('Tenant ID for the Entra ID application')
@@ -138,17 +124,6 @@ module msFoundryProject './modules/foundry/ms-foundry-project.bicep' = {
   }
 }
 
-module chatSmallDeploymentModel './modules/foundry/ms-foundry-model.bicep' = {
-  name: 'chatSmallDeploymentModel'
-  scope: resourceGroup
-  params: {
-    msFoundryName: msFoundry.outputs.name
-    modelName: chatSmallModel.name
-    modelCapacity: chatSmallModel.capacity
-    modelVersion: chatSmallModel.version
-  }
-}
-
 module chatOrchestratorDeploymentModel './modules/foundry/ms-foundry-model.bicep' = {
   name: 'chatOrchestratorDeploymentModel'
   scope: resourceGroup
@@ -158,19 +133,6 @@ module chatOrchestratorDeploymentModel './modules/foundry/ms-foundry-model.bicep
     modelCapacity: chatOrchestratorModel.capacity
     modelVersion: chatOrchestratorModel.version
   }
-  dependsOn: [chatSmallDeploymentModel]
-}
-
-module embeddingDeploymentModel './modules/foundry/ms-foundry-model.bicep' = {
-  name: 'embeddingDeploymentModel'
-  scope: resourceGroup
-  params: {
-    msFoundryName: msFoundry.outputs.name
-    modelName: embeddingModel.name
-    modelCapacity: embeddingModel.capacity
-    modelVersion: embeddingModel.version
-  }
-  dependsOn: [chatOrchestratorDeploymentModel]
 }
 
 module appServicePlan './modules/host/appserviceplan.bicep' = {
@@ -215,8 +177,8 @@ module teamsAgentAppService './modules/host/appservice.bicep' = {
       // Connections map
       CONNECTIONSMAP__0__CONNECTION: 'SERVICE_CONNECTION'
       CONNECTIONSMAP__0__SERVICEURL: '*'
-      // Azure Client ID for managed identity
-      AZURE_CLIENT_ID: botUami.outputs.clientId
+      // BOT Client ID for managed identity
+      BOT_CLIENT_ID: botUami.outputs.clientId
       // AI Search (document-level access control)
       AZURE_SEARCH_ENDPOINT: 'https://${aiSearch.outputs.name}.search.windows.net'
       AZURE_SEARCH_INDEX: 'secure-docs'
@@ -337,8 +299,6 @@ module appRegistration './modules/security/app-registration.bicep' = {
     tenantIdBase64Encoded: tenantIdBase64Encoded
   }
 }
-
-
 
 module apiManagement './modules/apim/apim.bicep' = {
   name: 'apiManagement'
