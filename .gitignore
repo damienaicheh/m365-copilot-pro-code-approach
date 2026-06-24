@@ -262,3 +262,5 @@ infra/main.json
 src/proxy_agent/appsettings.Development.json
 src/proxy_agent/bin/
 src/proxy_agent/obj/
+
+DevTunnels/**
