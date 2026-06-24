@@ -44,29 +44,41 @@ azd env new dev-tunnel
 
 ## One-time setup
 
+The dev bot is controlled by the azd variable **`DEPLOY_DEV_BOT`** (default `true`). It is
+only deployed when it is `true` **and** the dev inputs exist (`DEV_BOT_APP_ID` from step 1
+and `LOCAL_TUNNEL_ENDPOINT` from step 2), so the order below matters. Set
+`DEPLOY_DEV_BOT=false` at any time to provision the prod stack only.
+
 ```bash
-# 1. Create the single-tenant dev bot app + secret (stored in the azd env).
+# 0. (optional) the dev bot is enabled by default; this just makes it explicit.
+azd env set DEPLOY_DEV_BOT true
+
+# 1. Create the single-tenant dev bot app + secret (writes DEV_BOT_APP_ID to the azd env).
 #    Prod uses a managed identity, which a laptop cannot use to call the Bot Connector,
 #    so the local loop needs an app + secret instead.
 ./scripts/provision_dev_bot.sh
 
 # 2. Create a PERSISTENT dev tunnel for port 3978 and host it.
-#    Writes LOCAL_TUNNEL_ENDPOINT + BOT_DOMAIN to the azd env. Leave it running.
+#    Writes LOCAL_TUNNEL_ENDPOINT to the azd env. Leave it running.
 ./scripts/devtunnel.sh
 
-# 3. In a second terminal, provision Azure. APIM's backend is set to the tunnel URL,
-#    the Bot Service is registered single-tenant with the dev bot app, and the SSO +
-#    Search OAuth connections are created.
+# 3. In a second terminal, provision Azure. Because DEPLOY_DEV_BOT=true and both inputs
+#    are now set, this deploys the dev bot 'bot-dev-<suffix>' next to the prod bot, adds
+#    the 'bot-dev' APIM API (backend = tunnel), and creates the dev SSO + Search OAuth
+#    connections. The prod bot is left untouched.
 azd provision
 
 # 4. Generate src/.env for the local run (dev bot secret + Foundry/Search from outputs).
 ./scripts/gen_local_env.sh
 
-# 5. Build and sideload the app package (BOT_ID points at the dev bot).
+# 5. Build and sideload the app package (BOT_ID points at the dev bot when it is deployed).
 ./scripts/build_manifest.sh
 #    Upload appPackage/build/appPackage.zip in Teams
 #    (Apps > Manage your apps > Upload a custom app) or M365 Copilot.
 ```
+
+> To provision **without** any dev resources (prod only): `azd env set DEPLOY_DEV_BOT false`
+> then `azd provision`. You can flip it back to `true` later and re-provision.
 
 ---
 
@@ -89,20 +101,27 @@ in the morning if the tunnel was recreated).
 
 ## How it works (infra)
 
-`infra/main.bicep` keeps the production topology unchanged by default. When the azd env
-sets `LOCAL_TUNNEL_ENDPOINT` (+ `DEV_BOT_APP_ID`), it switches into dev-tunnel mode:
+The prod bot is **never modified**. A separate dev bot is deployed alongside it, gated by
+the `deployDevBot` parameter (azd var `DEPLOY_DEV_BOT`, default `true`). The dev bot is
+only created when it is enabled **and** its inputs exist, i.e.
+`DEPLOY_DEV_BOT=true` + `DEV_BOT_APP_ID` (from `provision_dev_bot.sh`) +
+`LOCAL_TUNNEL_ENDPOINT` (from `devtunnel.sh`). Set `DEPLOY_DEV_BOT=false` to skip all dev
+resources.
 
-| Concern | Production | Dev tunnel |
+| Concern | Prod bot (`bot-<suffix>`) | Dev bot (`bot-dev-<suffix>`) |
 | --- | --- | --- |
-| APIM backend (`botBackendUrl`) | App Service URI | `LOCAL_TUNNEL_ENDPOINT` |
-| Bot Service identity | UserAssignedMSI | SingleTenant app + secret (`DEV_BOT_APP_ID`) |
+| Bicep module | `modules/bot/bot-service.bicep` | `modules/bot/bot-service-dev.bicep` |
+| Identity | UserAssignedMSI | SingleTenant app + secret (`DEV_BOT_APP_ID`) |
+| APIM API / path | `bot-proxy` `/bot` | `bot-proxy-dev` `/bot-dev` |
+| APIM backend | App Service URI | `LOCAL_TUNNEL_ENDPOINT` |
 | Bot Framework JWT audience | MSI client id | dev bot app id |
-| `BOT_ID` / `api://botid-…` | MSI client id | dev bot app id |
 | Outbound Bot Connector auth | managed identity | client secret (local `.env`) |
-| SSO / Search OAuth connections | FIC on SSO app | identical (FIC is bound to the OAuth connection, not the bot identity) |
+| SSO / Search OAuth connections | on prod bot | on dev bot, same SSO app + FIC (the FIC is bound to the connection unique id, not the bot) |
 
-Leaving `LOCAL_TUNNEL_ENDPOINT` empty (the default) reverts every one of these to the
-production values, so normal `azd provision` / `azd deploy` is unaffected.
+Both APIM APIs live on the same APIM instance (reusable `modules/apim/apim-bot-api.bicep`),
+each validating its own audience and forwarding to its own backend. Setting
+`DEPLOY_DEV_BOT=false` (or not running the dev setup scripts) leaves only the prod
+topology, so a normal `azd provision` / `azd deploy` is unaffected.
 
 ---
 
