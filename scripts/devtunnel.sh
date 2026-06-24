@@ -6,9 +6,10 @@ set -euo pipefail
 PORT=3978
 devtunnel user login >/dev/null 2>&1 || true
 
-TUNNEL_ID="$(azd env get-value TUNNEL_ID 2>/dev/null || true)"
+# Read the saved tunnel id from the azd env (empty on first run, no error spam).
+TUNNEL_ID="$(azd env get-values 2>/dev/null | grep '^TUNNEL_ID=' | cut -d= -f2- | tr -d '"')"
 if [ -z "$TUNNEL_ID" ]; then
-  TUNNEL_ID="$(devtunnel create -a | grep -i "Tunnel ID" | sed "s/.*: *//" | tr -d "[:space:]")"
+  TUNNEL_ID="$(devtunnel create -a | grep -i 'Tunnel ID' | head -1 | sed 's/.*: *//' | tr -d ' \t\r\n')"
   devtunnel port create "$TUNNEL_ID" -p "$PORT" --protocol http
   azd env set TUNNEL_ID "$TUNNEL_ID"
 fi
