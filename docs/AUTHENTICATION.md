@@ -10,6 +10,7 @@ the easiest way to reason about security:
    agent obtains a per-user token scoped to Azure AI Search.
 3. [Per-user document access (ACLs)](#3-per-user-document-access-acls): how AI Search returns
    only the documents the signed-in user is allowed to see.
+4. [Detailed sequence diagram](#detailed-sequence-diagram): a complete end-to-end flow showing all three authentication flows in context.
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the end-to-end sequence diagram.
 
@@ -100,6 +101,75 @@ access control:
 
 Documents are tagged with Entra security group IDs (public documents use `group_ids=["all"]`).
 See [DATA_AND_SEARCH.md](./DATA_AND_SEARCH.md) for how the index and ACLs are seeded.
+
+## 4. Detailed sequence diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    %% Groups
+    box rgb(227, 242, 253) User
+        participant U as Copilot / Teams User
+    end
+
+    box rgb(237, 231, 246) Microsoft 365 / Teams
+        participant M as Microsoft 365 Copilot & Teams
+    end
+
+    box rgb(255, 243, 224) Azure Bot Platform
+        participant B as Azure Bot Service
+        participant T as Bot Token Service
+    end
+
+    box rgb(232, 245, 233) Custom Engine Agent - Azure Resource Group
+        participant AP as Azure APIM (Optional)
+        participant P as App Service / Agent App (M365 Agents SDK)
+    end
+
+    box rgb(252, 228, 236) Retrieval & Reasoning
+        participant S as Azure AI Search
+        participant G as Microsoft Graph
+        participant F as Microsoft Foundry (FoundryChatClient)
+    end
+
+    %% Inbound Message Flow
+    U->>M: User prompt<br/>(e.g., "Create a report")
+    M->>B: Send activity
+    B->>AP: POST /bot/api/messages<br/>Authorization: Bearer BF_JWT
+    AP->>AP: validate-jwt<br/>iss=api.botframework.com<br/>aud={bot-app-id}
+    AP->>P: Forward activity to /api/messages
+
+    %% Search Token Exchange Flow
+    rect rgb(245, 245, 245)
+        Note over P,T: auth_handlers=["SEARCH"]
+        P->>B: get_token("SEARCH")
+        B->>M: Request SSO token (silent/consent)
+        M->>U: Silent sign-in or consent prompt
+        B->>T: Token exchange for search_access_token
+        T-->>P: Search token<br/>(aud=search.azure.com)
+    end
+
+    %% Per-User Retrieval Flow
+    rect rgb(245, 245, 245)
+        Note over P,G: Native ACL filtering in AI Search
+        P->>S: Query + x-ms-query-source-authorization
+        S->>G: Resolve user group memberships
+        G-->>S: User groups
+        S-->>P: ACL-filtered documents
+    end
+
+    %% Agent + LLM Flow
+    rect rgb(245, 245, 245)
+        Note over P,F: Orchestration and streaming response
+        P->>F: FoundryChatClient.run<br/>question + filtered docs
+        F-->>P: Streaming response chunks
+    end
+
+    %% Outbound Reply Flow (direct, not via APIM)
+    P-->>B: Reply activities (Bot Connector path)
+    B-->>M: Stream content
+    M-->>U: Display result progressively
+```
 
 ## References
 
