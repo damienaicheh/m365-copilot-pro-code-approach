@@ -26,6 +26,32 @@ dependencies = [
 [tool.uv]
 prerelease = "allow"
 
+[dependency-groups]
+dev = [
+    "bandit>=1.8.0",
+    "mypy>=1.15.0",
+    "pytest>=8.3.0",
+    "ruff>=0.11.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["../tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+files = ["agents", "bootstrap", "models", "tools", "utils"]
+python_version = "3.13"
+check_untyped_defs = true
+ignore_missing_imports = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
 [tool.setuptools]
 packages = [
     "agents",
