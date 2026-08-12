@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import AsyncIterable
 
 from agent_framework import Agent, AgentSession
@@ -8,6 +7,7 @@ from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import PromptAgentDefinition
 from azure.identity import AzureCliCredential, DefaultAzureCredential
 
+from bootstrap.settings import get_settings
 from models.orchestrator_response import OrchestratorResponse
 from tools.secure_search import SecureSearchContextProvider, set_current_search_token
 
@@ -46,12 +46,13 @@ Be concise and professional. Cite the document title when referencing informatio
 
     @classmethod
     async def create(cls, credential: AzureCliCredential | DefaultAzureCredential) -> "OrchestratorAgent":
-        search_endpoint = os.environ.get("AZURE_SEARCH_ENDPOINT", "")
-        search_index = os.environ.get("AZURE_SEARCH_INDEX", "secure-docs")
+        settings = get_settings()
+        search_endpoint = settings.azure_search_endpoint
+        search_index = settings.azure_search_index
 
         search_provider = None
         context_providers = []
-        if search_endpoint:
+        if settings.azure_search_configured():
             search_provider = SecureSearchContextProvider(
                 endpoint=search_endpoint,
                 index_name=search_index,
@@ -62,13 +63,13 @@ Be concise and professional. Cite the document title when referencing informatio
             context_providers.append(search_provider)
 
         project = AIProjectClient(
-            endpoint=os.environ["MS_FOUNDRY_PROJECT_ENDPOINT"],
+            endpoint=str(settings.ms_foundry_project_endpoint),
             credential=credential,
         )
 
         foundry_client = FoundryChatClient(
-            project_endpoint=os.environ["MS_FOUNDRY_PROJECT_ENDPOINT"],
-            model=os.environ["MS_FOUNDRY_ORCHESTRATOR_MODEL_DEPLOYMENT_NAME"],
+            project_endpoint=str(settings.ms_foundry_project_endpoint),
+            model=settings.ms_foundry_orchestrator_model_deployment_name,
             credential=credential,
         )
 

@@ -1,5 +1,3 @@
-import os
-
 from aiohttp.web import Application, Request, Response, run_app
 from aiohttp.web_middlewares import middleware
 from microsoft_agents.hosting.aiohttp import (
@@ -11,6 +9,8 @@ from microsoft_agents.hosting.core import (
     AgentApplication,
     AgentAuthConfiguration,
 )
+
+from bootstrap.settings import get_settings
 
 
 def start_server(agent_app: AgentApplication, auth_configuration: AgentAuthConfiguration):
@@ -37,6 +37,6 @@ def start_server(agent_app: AgentApplication, auth_configuration: AgentAuthConfi
     app["agent_app"] = agent_app
     app["adapter"] = agent_app.adapter
 
-    port = int(os.getenv("PORT", "3978"))
+    port = get_settings().port
     print(f"✅ Server running at http://localhost:{port}")
     run_app(app, host="0.0.0.0", port=port)
