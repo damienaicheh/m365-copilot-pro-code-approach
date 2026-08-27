@@ -26,6 +26,7 @@ from microsoft_agents.hosting.core import (
 )
 
 from agents.orchestrator import OrchestratorAgent
+from bootstrap.settings import get_settings
 from utils import acquire_token, decode_token_claims, stream_agent_response
 
 load_dotenv()
@@ -34,8 +35,13 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 logger = logging.getLogger("app")
 
+# Validate all required environment variables at startup, before anything
+# else runs. Fails fast with a clear, aggregated message instead of opaque
+# runtime KeyErrors deep inside request handling.
+settings = get_settings()
+
 # Runtime diagnostic logging — set ENABLE_DIAG_LOGS=false to silence.
-DIAG = environ.get("ENABLE_DIAG_LOGS", "true").lower() == "true"
+DIAG = settings.enable_diag_logs
 diag_logger = logging.getLogger("diag")
 
 # ── SDK configuration ──
@@ -51,7 +57,7 @@ AGENT_APP = AgentApplication[TurnState](
 )
 
 credential = DefaultAzureCredential(
-    managed_identity_client_id=environ.get("BOT_CLIENT_ID") or None
+    managed_identity_client_id=settings.bot_client_id or None
 )
 
 # ── Lazy agent initialization ──

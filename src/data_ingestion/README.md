@@ -30,7 +30,7 @@ cp .env.example .env
 | Variable | Description | Required |
 |---|---|---|
 | `AZURE_SEARCH_ENDPOINT` | AI Search service URL | Yes |
-| `AZURE_SEARCH_INDEX` | Index name (default: `documents-index`) | No |
+| `AZURE_SEARCH_INDEX` | Index name (default: `secure-docs`) | No |
 | `AZURE_SEARCH_API_KEY` | Admin key (if not using managed identity) | No |
 
 ## Usage
@@ -41,7 +41,7 @@ uv run python ingest.py
 
 The script will:
 
-1. Create (or update) the `documents-index` index in Azure AI Search
+1. Create (or update) the target index (default: `secure-docs`) in Azure AI Search
 2. Scan the `sample/` folder and extract text from each supported file
 3. Upload the documents to the index
 

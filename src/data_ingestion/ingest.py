@@ -6,7 +6,6 @@ into an Azure AI Search index.
 
 import hashlib
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -35,27 +34,26 @@ from dotenv import load_dotenv
 from openai import AzureOpenAI
 from openpyxl import load_workbook
 
+from bootstrap.settings import get_settings
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 load_dotenv()
 
-SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
-AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX", "documents-index")
-SEMANTIC_CONFIG_NAME = os.getenv(
-    "AZURE_SEARCH_SEMANTIC_CONFIG_NAME", "default-semantic-config")
+settings = get_settings()
+
+SEARCH_ENDPOINT = settings.azure_search_endpoint
+AZURE_SEARCH_INDEX = settings.azure_search_index
+SEMANTIC_CONFIG_NAME = settings.azure_search_semantic_config_name
 # If set, key-based auth is used; otherwise DefaultAzureCredential (recommended)
-SEARCH_API_KEY = os.getenv("AZURE_SEARCH_API_KEY")
+SEARCH_API_KEY = settings.azure_search_api_key
 
 # Azure AI Foundry – embedding model configuration
 # OpenAI-compatible endpoint exposed by the AI Services resource
-MS_FOUNDRY_PROJECT_ENDPOINT = os.environ["MS_FOUNDRY_PROJECT_ENDPOINT"]
-AZURE_AI_FOUNDRY_EMBEDDING_DEPLOYMENT = os.getenv(
-    "AZURE_AI_FOUNDRY_EMBEDDING_DEPLOYMENT", "text-embedding-3-small"
-)
-AZURE_AI_FOUNDRY_API_VERSION = os.getenv(
-    "AZURE_AI_FOUNDRY_API_VERSION", "2024-06-01"
-)
+MS_FOUNDRY_PROJECT_ENDPOINT = str(settings.ms_foundry_project_endpoint)
+AZURE_AI_FOUNDRY_EMBEDDING_DEPLOYMENT = settings.azure_ai_foundry_embedding_deployment
+AZURE_AI_FOUNDRY_API_VERSION = settings.azure_ai_foundry_api_version
 EMBEDDING_DIMENSIONS = 1536  # text-embedding-3-small default dimensions
 
 SAMPLE_FOLDER = Path(__file__).parent / "sample"
